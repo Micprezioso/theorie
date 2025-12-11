@@ -1,0 +1,12 @@
+#Sommets
+A;Intersection_A
+B;Intersection_B
+C;Intersection_C
+D;Intersection_D
+
+#Aretes
+A;B;1
+B;C;1
+C;D;1
+D;A;1
+
