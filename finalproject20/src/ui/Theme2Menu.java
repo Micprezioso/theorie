@@ -99,12 +99,16 @@ public class Theme2Menu {
         System.out.println("Construit un MST, le parcourt pour obtenir une tournée approchée,");
         System.out.println("et peut découper en sous-tournées selon la capacité.\n");
         
+        // Constantes
+        final double MAX_CAPACITY = 20.0;
+        
         // Charger le graphe complet
         try {
             System.out.println("Chargement du graphe theme2_mst_graph_complete.txt...");
             currentGraph = GraphLoader.loadUndirectedGraph("theme2_mst_graph_complete.txt");
             System.out.println("Graphe chargé avec succès !");
-            displayGraphSummary(currentGraph);
+            System.out.println("Dans cette méthode, nous prenons en compte la charge maximale du camion et la contenance de chaque point de collecte.");
+            displayGraphSummaryForMst(currentGraph);
         } catch (IOException e) {
             System.out.println("Erreur lors de la lecture du fichier : " + e.getMessage());
             return;
@@ -113,27 +117,74 @@ public class Theme2Menu {
             return;
         }
 
-        // Sélectionner le dépôt
-        Vertex depot = selectVertex("Sélectionnez le sommet DÉPÔT", currentGraph);
+        // Dépôt fixé à H
+        Vertex depot = currentGraph.getVertex("H");
+        if (depot == null) {
+            System.out.println("Erreur : Le sommet H (dépôt) n'existe pas dans le graphe.");
+            return;
+        }
+        System.out.println("\nDans cette approche, le dépôt est fixé au point H.");
+
+        // Définir les contenances des points de collecte
+        Map<Vertex, Double> capacities = new HashMap<>();
+        capacities.put(currentGraph.getVertex("A"), 4.0);
+        capacities.put(currentGraph.getVertex("B"), 6.0);
+        capacities.put(currentGraph.getVertex("C"), 5.0);
+        capacities.put(currentGraph.getVertex("D"), 3.0);
+        capacities.put(currentGraph.getVertex("E"), 4.0);
+        capacities.put(currentGraph.getVertex("F"), 2.0);
+        capacities.put(currentGraph.getVertex("G"), 5.0);
+        capacities.put(depot, 0.0); // H est le dépôt, pas de collecte
 
         System.out.println("\nConstruction de l'arbre couvrant de poids minimum (MST)...");
         MstTspSolver.Result result = MstTspSolver.solve(currentGraph, depot);
 
-        System.out.println("\n--- RÉSULTATS ---");
-        System.out.println("Poids du MST : " + result.getMstWeight());
-        System.out.println("Tournée MST approchée (avec shortcutting) :");
-        printPath(result.getTour());
-        System.out.println("Distance TOTALE de la tournée : " + result.getTotalDistance());
-        System.out.println("\nNote : Cette approche garantit une solution à au plus 2 fois l'optimal.");
+        // Optimiser le découpage de la tournée globale en sous-tournées pour minimiser la distance totale
+        List<List<Vertex>> subTours = MstTspSolver.optimizeSplitByCapacity(currentGraph, result.getTour(), capacities, MAX_CAPACITY);
 
-        // Proposer le découpage par capacité
-        System.out.println("\n--- Découpage par capacité ---");
-        System.out.print("Voulez-vous découper la tournée selon une capacité maximale ? (o/n) : ");
-        String response = scanner.nextLine().trim().toLowerCase();
-        
-        if (response.equals("o") || response.equals("oui")) {
-            splitByCapacity(result.getTour(), depot);
+        // Afficher les résultats
+        System.out.println("\n--- RÉSULTATS ---");
+        System.out.println("Résultat (Approche MST / tournée capacitaire) :");
+        System.out.println("Le camion effectue " + subTours.size() + " tournée(s) pour respecter la charge maximale et visiter tous les points de collecte.");
+        System.out.println();
+
+        double totalDistance = 0.0;
+        double totalLoad = 0.0;
+
+        for (int i = 0; i < subTours.size(); i++) {
+            List<Vertex> subTour = subTours.get(i);
+            
+            // Calculer la charge de cette tournée
+            double tourLoad = 0.0;
+            for (int j = 1; j < subTour.size() - 1; j++) {
+                tourLoad += capacities.getOrDefault(subTour.get(j), 0.0);
+            }
+            totalLoad += tourLoad;
+            
+            // Calculer la distance de cette tournée
+            double tourDistance = 0.0;
+            for (int j = 0; j < subTour.size() - 1; j++) {
+                tourDistance += currentGraph.getWeight(subTour.get(j), subTour.get(j + 1));
+            }
+            totalDistance += tourDistance;
+            
+            // Afficher la tournée
+            System.out.print("Tournée " + (i + 1) + " : ");
+            for (int j = 0; j < subTour.size(); j++) {
+                if (j > 0) {
+                    System.out.print(" -> ");
+                }
+                System.out.print(subTour.get(j).getId());
+            }
+            System.out.println();
+            System.out.println("Charge de la tournée " + (i + 1) + " : " + (int)tourLoad);
+            System.out.println("Distance de la tournée " + (i + 1) + " : " + String.format("%.1f", tourDistance));
+            System.out.println();
         }
+
+        System.out.println("Distance totale de toutes les tournées : " + String.format("%.1f", totalDistance));
+        System.out.println();
+        System.out.println("La tournée globale a été construite à partir de l'arbre couvrant minimal (MST), puis découpée en tournées respectant la capacité du camion.");
     }
 
     private void splitByCapacity(List<Vertex> tour, Vertex depot) {
@@ -193,6 +244,14 @@ public class Theme2Menu {
         System.out.println("Nombre d'arêtes : " + graph.getEdgeCount());
     }
 
+    private void displayGraphSummaryForMst(Graph graph) {
+        System.out.println("\n--- Résumé du graphe ---");
+        System.out.println("Nombre de sommets : " + graph.getVertexCount());
+        System.out.println("Nombre d'arêtes : " + graph.getEdgeCount());
+        System.out.println("Charge maximale du camion : 20");
+        System.out.println("Contenances des points de collecte : A=4, B=6, C=5, D=3, E=4, F=2, G=5");
+    }
+
     private Vertex selectVertex(String prompt, Graph graph) {
         System.out.println("\n" + prompt + " :");
         List<Vertex> vertices = new ArrayList<>(graph.getVertices());
@@ -249,4 +308,5 @@ public class Theme2Menu {
         return value;
     }
 }
+
 

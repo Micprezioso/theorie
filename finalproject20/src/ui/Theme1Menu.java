@@ -4,7 +4,9 @@ import algorithms.*;
 import graph.*;
 import io.GraphLoader;
 
+import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 
@@ -83,8 +85,36 @@ public class Theme1Menu {
 
     private void loadGraph() {
         System.out.println("\n--- Chargement d'un graphe ---");
-        System.out.print("Chemin du fichier : ");
-        String filePath = scanner.nextLine().trim();
+        
+        // Lister les fichiers .txt disponibles
+        List<File> txtFiles = findTxtFiles();
+        
+        String filePath;
+        if (!txtFiles.isEmpty()) {
+            System.out.println("\nFichiers disponibles :");
+            for (int i = 0; i < txtFiles.size(); i++) {
+                System.out.println("  " + (i + 1) + ") " + txtFiles.get(i).getName());
+            }
+            System.out.println("  0) Saisir un chemin manuellement");
+            System.out.println();
+            
+            int fileChoice = readInt("Sélectionnez un fichier (0 pour chemin manuel) : ");
+            
+            if (fileChoice == 0) {
+                System.out.print("Chemin du fichier : ");
+                filePath = scanner.nextLine().trim();
+            } else if (fileChoice >= 1 && fileChoice <= txtFiles.size()) {
+                filePath = txtFiles.get(fileChoice - 1).getPath();
+                System.out.println("Fichier sélectionné : " + txtFiles.get(fileChoice - 1).getName());
+            } else {
+                System.out.println("Choix invalide. Utilisation du chemin manuel.");
+                System.out.print("Chemin du fichier : ");
+                filePath = scanner.nextLine().trim();
+            }
+        } else {
+            System.out.print("Aucun fichier .txt trouvé. Chemin du fichier : ");
+            filePath = scanner.nextLine().trim();
+        }
         
         System.out.print("Type de graphe (1=non orienté, 2=orienté) : ");
         int type = readInt("");
@@ -402,5 +432,30 @@ public class Theme1Menu {
         scanner.nextLine(); // Consommer le retour à la ligne
         return value;
     }
+
+    /**
+     * Trouve tous les fichiers .txt dans le répertoire courant.
+     * @return Liste des fichiers .txt trouvés
+     */
+    private List<File> findTxtFiles() {
+        List<File> txtFiles = new ArrayList<>();
+        try {
+            File currentDir = new File(System.getProperty("user.dir"));
+            File[] files = currentDir.listFiles();
+            
+            if (files != null) {
+                for (File file : files) {
+                    if (file.isFile() && file.getName().toLowerCase().endsWith(".txt")) {
+                        txtFiles.add(file);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // En cas d'erreur, on retourne une liste vide
+            System.err.println("Erreur lors de la recherche de fichiers : " + e.getMessage());
+        }
+        return txtFiles;
+    }
 }
+
 

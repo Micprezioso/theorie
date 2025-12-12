@@ -203,5 +203,122 @@ public class MstTspSolver {
         
         return subTours;
     }
+
+    /**
+     * Optimise le decoupage d'une tournee en sous-tournees pour minimiser la distance totale.
+     * Essaie toutes les combinaisons possibles de points pour chaque tournee.
+     * 
+     * @param graph Le graphe complet
+     * @param tour La tournee complete (commence et finit au depot)
+     * @param quantities Dictionnaire {sommet -> quantite de dechets a collecter}
+     * @param maxCapacity Capacite maximale du camion
+     * @return Liste optimisee de sous-tournees
+     */
+    public static List<List<Vertex>> optimizeSplitByCapacity(
+            UndirectedGraph graph,
+            List<Vertex> tour, 
+            Map<Vertex, Double> quantities, 
+            double maxCapacity) {
+        
+        Vertex depot = tour.get(0);
+        List<Vertex> allPoints = new ArrayList<>();
+        for (int i = 1; i < tour.size() - 1; i++) {
+            allPoints.add(tour.get(i));
+        }
+        
+        // Generer toutes les partitions possibles en 2 groupes
+        List<List<Vertex>> bestSubTours = null;
+        double bestTotalDistance = Double.POSITIVE_INFINITY;
+        
+        int n = allPoints.size();
+        // Generer toutes les combinaisons de points pour la premiere tournee
+        for (long mask = 1; mask < (1L << n) - 1; mask++) {
+            List<Vertex> group1 = new ArrayList<>();
+            List<Vertex> group2 = new ArrayList<>();
+            double load1 = 0.0;
+            double load2 = 0.0;
+            
+            for (int i = 0; i < n; i++) {
+                if ((mask & (1L << i)) != 0) {
+                    Vertex v = allPoints.get(i);
+                    group1.add(v);
+                    load1 += quantities.getOrDefault(v, 0.0);
+                } else {
+                    Vertex v = allPoints.get(i);
+                    group2.add(v);
+                    load2 += quantities.getOrDefault(v, 0.0);
+                }
+            }
+            
+            // Verifier que les deux groupes respectent la capacite
+            if (load1 > maxCapacity || load2 > maxCapacity) {
+                continue;
+            }
+            
+            // Optimiser l'ordre de chaque groupe avec plus proche voisin
+            List<Vertex> tour1 = optimizeTourOrder(graph, depot, group1);
+            List<Vertex> tour2 = optimizeTourOrder(graph, depot, group2);
+            
+            // Calculer les distances
+            double dist1 = calculateTourDistance(graph, tour1);
+            double dist2 = calculateTourDistance(graph, tour2);
+            double totalDist = dist1 + dist2;
+            
+            if (totalDist < bestTotalDistance) {
+                bestTotalDistance = totalDist;
+                bestSubTours = new ArrayList<>();
+                bestSubTours.add(tour1);
+                bestSubTours.add(tour2);
+            }
+        }
+        
+        // Si aucune solution en 2 tournees, utiliser le decoupage simple
+        if (bestSubTours == null) {
+            return splitTourByCapacity(tour, quantities, maxCapacity);
+        }
+        
+        return bestSubTours;
+    }
+    
+    /**
+     * Optimise l'ordre des points dans une tournee en utilisant plus proche voisin.
+     */
+    private static List<Vertex> optimizeTourOrder(UndirectedGraph graph, Vertex depot, List<Vertex> points) {
+        if (points.isEmpty()) {
+            List<Vertex> result = new ArrayList<>();
+            result.add(depot);
+            result.add(depot);
+            return result;
+        }
+        
+        List<Vertex> optimized = new ArrayList<>();
+        optimized.add(depot);
+        Set<Vertex> remaining = new HashSet<>(points);
+        Vertex current = depot;
+        
+        while (!remaining.isEmpty()) {
+            Vertex nearest = null;
+            double minDist = Double.POSITIVE_INFINITY;
+            
+            for (Vertex candidate : remaining) {
+                double dist = graph.getWeight(current, candidate);
+                if (dist < minDist) {
+                    minDist = dist;
+                    nearest = candidate;
+                }
+            }
+            
+            if (nearest != null) {
+                optimized.add(nearest);
+                remaining.remove(nearest);
+                current = nearest;
+            } else {
+                break;
+            }
+        }
+        
+        optimized.add(depot);
+        return optimized;
+    }
 }
 

@@ -29,6 +29,9 @@ public class MainMenu {
                 case 2:
                     runTheme2();
                     break;
+                case 3:
+                    runTheme3();
+                    break;
                 case 0:
                     running = false;
                     System.out.println("Au revoir !");
@@ -52,6 +55,7 @@ public class MainMenu {
         System.out.println("=".repeat(60));
         System.out.println("1) Thème 1 : Ramassage des encombrants et tournées de rues");
         System.out.println("2) Thème 2 : Optimiser les ramassages des points de collecte");
+        System.out.println("3) Thème 3 : Planification des jours de collecte (Roanne)");
         System.out.println("0) Quitter");
         System.out.println("=".repeat(60));
     }
@@ -66,6 +70,11 @@ public class MainMenu {
         theme2Menu.run();
     }
 
+    private void runTheme3() {
+        Theme3Menu theme3Menu = new Theme3Menu(scanner);
+        theme3Menu.run();
+    }
+
     private int readInt(String prompt) {
         System.out.print(prompt);
         while (!scanner.hasNextInt()) {
@@ -77,4 +86,5 @@ public class MainMenu {
         return value;
     }
 }
+
 
